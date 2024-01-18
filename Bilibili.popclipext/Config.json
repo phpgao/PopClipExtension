@@ -1,0 +1,14 @@
+{
+  "identifier":"com.phpgao.extension.bilibili",
+  "name": "Bilibili Search",
+  "icon": "square filled BL",
+  "regex": "(?s)^.{1,1900}$",
+  "url": "https://search.bilibili.com/all?keyword={popclip text}",
+  "description": "Search bilibili by keywords.",
+  "credits": [
+    {
+      "link": "https://phpgao.com",
+      "name": "Jimmy Gao"
+    }
+  ]
+}

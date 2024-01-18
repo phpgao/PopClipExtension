@@ -1,0 +1,19 @@
+{
+    "identifier":"com.phpgao.extension.instant-currency",
+    "popclip version":3844,
+    "name":"Instant Currency",
+    "icon":"square filled $$",
+    "regex":"^\\d+(\\.\\d{1,})$|(^[1-9]\\d*$)",
+    "module":"currency.js",
+    "entitlements":[
+        "network"
+    ],
+    "after":"preview-result",
+    "credits":[
+        {
+            "link":"https://phpgao.com",
+            "name":"Jimmy Gao"
+        }
+    ],
+    "description":"Convert the selected value into currency translation in real time with No Rate Limit. https://github.com/fawazahmed0/currency-api"
+}
