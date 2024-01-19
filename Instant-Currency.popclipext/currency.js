@@ -1,67 +1,86 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", {value: true});
 exports.options = exports.action = void 0;
-const axios = require("axios");
-const currencies = require("./currencies.json");
+const utils = require("./utils.js");
+const options = require("./options.js");
 
-const fetchExchangeRates = async (baseCurrency) => {
-    const response = await axios.get(
-        `https://api.frankfurter.app/latest?from=${baseCurrency}`
-    );
-    return response.data;
-};
-
-const convert = async (amount, convertOptions) => {
-    if (amount <= 0) {
-        popclip.showFailure();
-        return "";
-    }
-    const exchangeData = await fetchExchangeRates(convertOptions.base);
-    const exchangeRates = exchangeData.rates;
-    const selectedCurrencies = Object.values(convertOptions).filter(
-        (currency) => currency && currency !== convertOptions.base
+async function convertUsingFrankfurter(convertOptions, amount) {
+    const selectedCurrencies = utils.getUniqueCurrencies(
+        convertOptions,
+        options.currencyShortNames
     );
 
     if (!selectedCurrencies.length) {
-        popclip.showFailure();
-        return "";
+        return "Empty selected Currencies";
     }
 
-    const conversionOutput = [...new Set(selectedCurrencies)]
-        .map((currency) => {
-            if (exchangeRates[currency] && exchangeRates[currency] !== 0) {
-                return `${currency}=${(amount / exchangeRates[currency]).toFixed(2)}${convertOptions.base}`;
-            } else {
-                return `${currency}=N/A`;
-            }
-        })
-        .join("\n");
+    const exchangeData = await utils.fetchExchangeRates(convertOptions.base, );
+    const exchangeRates = exchangeData.rates;
+
+    const conversionOutput = utils.formatConversionOutput(
+        exchangeRates,
+        amount,
+        convertOptions.base,
+        selectedCurrencies,
+    );
 
     return `\n${conversionOutput}\nDate: ${exchangeData.date}\n`;
 };
 
+async function convertUsingOpenexchangerates(convertOptions, amount) {
+    if (convertOptions.tokenString === "") {
+        return "Empty token";
+    }
+
+    const selectedCurrencies = utils.getUniqueCurrencies(
+        convertOptions,
+        options.currencyShortNames
+    );
+
+    if (!selectedCurrencies.length) {
+        return "Empty selected Currencies";
+    }
+
+    const response = await utils.fetchOpenExchangeRates(
+        convertOptions,
+        selectedCurrencies
+    );
+    const formattedTime = utils.formatTimestamp(
+        Math.floor(response.timestamp)
+    );
+
+    const exchangeRates = response.rates;
+    var basePrice = exchangeRates[convertOptions.base];
+    if (response.base !== convertOptions.base) {
+        for (let key in exchangeRates) {
+            exchangeRates[key] = exchangeRates[key] / basePrice;
+        }
+    }
+    
+    const conversionOutput = utils.formatConversionOutput(
+        exchangeRates,
+        amount,
+        convertOptions.base,
+        selectedCurrencies,
+    );
+
+    return `\n${conversionOutput}\nDate: ${formattedTime}\n`;
+}
+
+const convert = async (amount, convertOptions) => {
+    if (amount <= 0) {
+        return "0?";
+    }
+    switch (convertOptions.apiName) {
+        case "frankfurter":
+            return await convertUsingFrankfurter(convertOptions, amount);
+        case "openexchangerates":
+            return await convertUsingOpenexchangerates(convertOptions, amount);
+        default:
+            return `???`;
+    }
+};
+
 exports.action = async (input, options) => convert(input.text, options);
 
-const currencyList = Object.entries(currencies).map(([key, value]) => ({
-    short_name: key,
-    description: `${key}/${value}`,
-}));
-
-const optionList = [
-    {name: "base", en: "Base Currency", "zh-Hans": "基础货币为", default: "CNY"},
-    {name: "first", en: "1st Currency", "zh-Hans": "第1种货币", default: "USD"},
-    {name: "second", en: "2nd Currency", "zh-Hans": "第2种货币", default: "HKD"},
-    {name: "third", en: "3rd Currency", "zh-Hans": "第3种货币", default: "JPY"},
-    {name: "fourth", en: "4th Currency", "zh-Hans": "第4种货币", default: "THB"},
-    {name: "fifth", en: "5th Currency", "zh-Hans": "第5种货币", default: "GBP"},
-    {name: "sixth", en: "6th Currency", "zh-Hans": "第6种货币", default: "KRW"},
-];
-
-exports.options = optionList.map((option) => ({
-    identifier: option.name,
-    label: option,
-    type: "multiple",
-    valueLabels: currencyList.map((item) => item.description),
-    values: currencyList.map((item) => item.short_name),
-    defaultValue: option.default,
-}));
+exports.options = options.options;
